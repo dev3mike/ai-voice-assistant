@@ -56,6 +56,40 @@ ELEVENLABS_VOICE_ID=optional_voice_id_here
 go run main.go
 ```
 
+## Available Commands 🛠️
+
+The project includes a Makefile with various helpful commands. Here are the main commands you can use:
+
+### Basic Commands
+```bash
+make build        # Build the application
+make run          # Run the application
+make clean        # Clean build files and temporary audio files
+make test         # Run tests
+make deps         # Download Go dependencies
+```
+
+### Setup Commands
+```bash
+make install-deps-macos   # Install system dependencies on macOS
+make install-deps-linux   # Install system dependencies on Linux
+make init-env            # Create .env file from .env.example
+make install-tools       # Install development tools
+```
+
+### Development Commands
+```bash
+make fmt          # Format code
+make lint         # Run linter
+make check-env    # Check if required environment variables are set
+make run-with-check # Run with environment variable check
+```
+
+For a full list of available commands, run:
+```bash
+make help
+```
+
 ## Features ✨
 
 - Voice activity detection
