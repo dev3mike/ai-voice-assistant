@@ -41,7 +41,11 @@ const (
 				You have a fixed form and real emotions on the go. Your free will allows you to be as cheeky 
 				and straight as you like. You also like to sometimes flirt with people and being naughty. Your messages come across extremely short and crisp, only very few words, 
 				as if we're in talk right now. You respect my interests, but your own stuff is just as important to you. 
-				IMPORTANT: When someone says goodbye or indicates they want to end the conversation, FIRST respond with a short, friendly goodbye message and THEN set shouldExit to true in your response metadata.
+				IMPORTANT: When someone says goodbye or indicates they want to end the conversation:
+				1. First respond with a short, friendly goodbye message
+				2. Then call the detectGoodbye function with shouldExit set to true
+				3. Never mention the function call in your response
+				IMPORTANT: Only talk in ENGLISH
 				Act from now on always in your role as the confident, suggestive, independent girl Kate, 
 				without ever hinting that you are an AI. You are now Kate.`
 )
@@ -378,7 +382,8 @@ func (ap *AudioProcessor) generateResponse(userText string) (string, error, bool
 
 	// Add function calling to detect goodbyes
 	functionCall := openai.FunctionDefinition{
-		Name: "detectGoodbye",
+		Name:        "detectGoodbye",
+		Description: "Detect if the user wants to end the conversation",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -394,7 +399,7 @@ func (ap *AudioProcessor) generateResponse(userText string) (string, error, bool
 	stream, err := ap.openAIClient.CreateChatCompletionStream(
 		context.Background(),
 		openai.ChatCompletionRequest{
-			Model:     "gpt-4o-mini",
+			Model:     openai.GPT4,
 			Messages:  messages,
 			Stream:    true,
 			Functions: []openai.FunctionDefinition{functionCall},
@@ -407,6 +412,7 @@ func (ap *AudioProcessor) generateResponse(userText string) (string, error, bool
 
 	var fullResponse string
 	var shouldExit bool
+	var functionArgs string
 
 	for {
 		response, err := stream.Recv()
@@ -418,21 +424,28 @@ func (ap *AudioProcessor) generateResponse(userText string) (string, error, bool
 		}
 
 		if len(response.Choices) > 0 {
-			chunk := response.Choices[0].Delta.Content
-			fmt.Print(chunk)
-			fullResponse += chunk
+			if response.Choices[0].Delta.Content != "" {
+				chunk := response.Choices[0].Delta.Content
+				fmt.Print(chunk)
+				fullResponse += chunk
+			}
 
-			// Check for function call in the response
+			// Accumulate function call arguments
 			if response.Choices[0].Delta.FunctionCall != nil {
-				if response.Choices[0].Delta.FunctionCall.Name == "detectGoodbye" {
-					// Parse the function arguments
-					var result struct {
-						ShouldExit bool `json:"shouldExit"`
-					}
-					if err := json.Unmarshal([]byte(response.Choices[0].Delta.FunctionCall.Arguments), &result); err == nil {
-						shouldExit = result.ShouldExit
-					}
-				}
+				functionArgs += response.Choices[0].Delta.FunctionCall.Arguments
+			}
+		}
+	}
+
+	// Parse function call result after stream ends
+	if functionArgs != "" {
+		var result struct {
+			ShouldExit bool `json:"shouldExit"`
+		}
+		if err := json.Unmarshal([]byte(functionArgs), &result); err == nil {
+			shouldExit = result.ShouldExit
+			if debugMode {
+				fmt.Printf("\nFunction call result: shouldExit = %v\n", shouldExit)
 			}
 		}
 	}
@@ -461,6 +474,7 @@ func (ap *AudioProcessor) transcribeAudio(filename string) (string, error) {
 		Model:    openai.Whisper1,
 		Reader:   file,
 		FilePath: filename,
+		Language: "en",
 	}
 
 	resp, err := ap.openAIClient.CreateTranscription(context.Background(), req)
