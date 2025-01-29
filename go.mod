@@ -1,4 +1,4 @@
-module github.com/masoud/voice-chat
+module github.com/dev3mike/ai-voice-assistant
 
 go 1.21
 
