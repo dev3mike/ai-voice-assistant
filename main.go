@@ -645,7 +645,7 @@ func main() {
 			continue
 		}
 
-		// Check if we should exit after Sophia's response
+		// Check if we should exit after AI response
 		if shouldExit {
 			fmt.Println("\nGoodbye! Conversation ended.")
 			return
